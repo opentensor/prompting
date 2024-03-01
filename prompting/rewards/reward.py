@@ -86,7 +86,7 @@ class RewardResult:
             reward_model = self.reward_pipeline.get(reward_info["name"])
             if not reward_model:
                 raise ValueError(
-                    f"Reward model {reward_info['name']} not supported. Please choose from {self.reward_pipeline.keys()}"
+                    f"Reward model {reward_info['name']} not supported. Please choose from {self.reward_pipeline.reward_models.keys()}"
                 )
             # Compute the rewards for the responses given the prompt
             reward_event = reward_model.apply(

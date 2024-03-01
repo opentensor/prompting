@@ -24,9 +24,11 @@ import bittensor as bt
 from typing import List
 from prompting.agent import HumanAgent
 from prompting.dendrite import DendriteResponseEvent
-from prompting.conversation import create_task
+from prompting.conversation import TransitionMatrix, ContextChain
+from prompting.persona import create_persona
 from prompting.protocol import PromptingSynapse
 from prompting.rewards import RewardResult
+from prompting.tasks import TASKS
 from prompting.utils.uids import get_random_uids
 from prompting.utils.logging import log_event
 
@@ -99,37 +101,36 @@ async def run_step(
     return event
 
 
+
 async def forward(self):
     bt.logging.info("🚀 Starting forward loop...")
 
-    while True:
-        bt.logging.info(
-            f"📋 Selecting task... from {self.config.neuron.tasks} with distribution {self.config.neuron.task_p}"
-        )
-        # Create a specific task
-        task_name = np.random.choice(
-            self.config.neuron.tasks, p=self.config.neuron.task_p
-        )
-        bt.logging.info(f"📋 Creating {task_name} task... ")
-        try:
-            task = create_task(llm_pipeline=self.llm_pipeline, task_name=task_name)
-            break
-        except Exception as e:
-            bt.logging.error(
-                f"Failed to create {task_name} task. {sys.exc_info()}. Skipping to next task."
-            )
-            continue
-
-    # Create random agent with task, topic, profile...
-    bt.logging.info(f"🤖 Creating agent for {task_name} task... ")
-    agent = HumanAgent(
-        task=task, llm_pipeline=self.llm_pipeline, begin_conversation=True
+    # NOTE: begin_probs only defines the start tasks. If we want to completely disable certain tasks we need to that in probs
+    mat = TransitionMatrix(
+        labels=list(self.transition_probs.keys()),
+        probs=list(self.transition_probs.values()),
+        begin_probs=self.config.neuron.task_p
     )
 
-    rounds = 0
     exclude_uids = []
-    while not agent.finished:
-        # when run_step is called, the agent updates its progress
+    # create a persona that will persist through the conversation
+    persona = create_persona()
+    num_steps = np.random.randint(1, 10)
+    chain = ContextChain(matrix=mat, num_steps=num_steps, seed=None, mock=False)
+
+    bt.logging.info(f'Starting conversation with {num_steps} steps')
+    for context in chain:
+        task_name = chain.task_name
+        task = TASKS[task_name](llm_pipeline=self.llm_pipeline, context=context)
+        bt.logging.info(f"📋 Selected task: {task}")
+
+        # Create an agent with the selected task and persona, and begin the conversation.
+        bt.logging.info(f"🤖 Creating agent for {task_name} task... ")
+        agent = HumanAgent(
+            task=task, llm_pipeline=self.llm_pipeline, begin_conversation=True, persona=persona
+        )
+
+        # Perform a single step of the agent, consisting of querying, rewarding, updating scores and logging the event.
         event = await run_step(
             self,
             agent,
@@ -138,9 +139,6 @@ async def forward(self):
             exclude=exclude_uids,
         )
         exclude_uids += event["uids"]
-        task.complete = True
 
-        rounds += 1
-
-    del agent
-    del task
+        del agent
+        del task

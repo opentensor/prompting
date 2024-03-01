@@ -6,13 +6,6 @@ from prompting.rewards import REWARD_MODELS
 from .fixtures.task import CONTEXTS, TASKS, TASK_FIELDS
 from .fixtures.llm import LLM_PIPELINE
 
-# TODO: Check if format_challenge is defined
-# TODO: Ensure that when static_reference is True, reference_time is not defined. Same for query_time and static_query
-# TODO: Ensure that when generate_reference=True and static_reference is True,there is still a reference
-# TODO: Ensure that when generate_reference=False and static_reference is True,there is still a reference
-# TODO: Ensure that when generate_reference=False and static_reference is False,there is NOT a reference
-
-
 @pytest.mark.parametrize("task", TASKS)
 def test_create_task(task: Task):
     task(llm_pipeline=LLM_PIPELINE, context=CONTEXTS[task])
