@@ -5,12 +5,14 @@ from prompting.tasks import (
     SummarizationTask,
     MathTask,
     DateQuestionAnsweringTask,
+    SentimentAnalysisTask,
 )
 from prompting.tools import (
     WikiDataset,
     HFCodingDataset,
     MathDataset,
     WikiDateDataset,
+    ReviewDataset,
 )
 
 from transformers import Pipeline
@@ -31,6 +33,9 @@ def create_task(llm_pipeline: Pipeline, task_name: str, create_reference=True) -
 
     elif task_name == "date_qa":
         dataset = WikiDateDataset()
+
+    elif task_name == "sentiment":
+        dataset = ReviewDataset()
 
     if task_name == "summarization":
         task = SummarizationTask(
@@ -66,6 +71,9 @@ def create_task(llm_pipeline: Pipeline, task_name: str, create_reference=True) -
             context=dataset.next(),
             create_reference=create_reference
         )
+
+    elif task_name == "sentiment":
+        task = SentimentAnalysisTask(llm_pipeline=llm_pipeline, context=dataset.next())
 
     else:
         raise ValueError(f"Task {task_name} not supported. Please choose a valid task")
