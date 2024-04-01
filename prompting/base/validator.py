@@ -15,6 +15,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import sentry_sdk
 import sys
 import copy
 import torch
@@ -30,7 +31,7 @@ from prompting.base.neuron import BaseNeuron
 from prompting.mock import MockDendrite
 from prompting.utils.config import add_validator_args
 from prompting.utils.exceptions import MaxRetryError
-
+from prompting.utils.sentry import init_sentry
 
 class BaseValidatorNeuron(BaseNeuron):
     """
@@ -43,7 +44,9 @@ class BaseValidatorNeuron(BaseNeuron):
         add_validator_args(cls, parser)
 
     def __init__(self, config=None):
-        super().__init__(config=config)
+        super().__init__(config=config, neuron_type="validator")
+
+        
 
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
@@ -93,9 +96,11 @@ class BaseValidatorNeuron(BaseNeuron):
                     axon=self.axon,
                 )
             except Exception as e:
+                sentry_sdk.capture_exception()
                 bt.logging.error(f"Failed to serve Axon with exception: {e}")
 
         except Exception as e:
+            sentry_sdk.capture_exception()
             bt.logging.error(f"Failed to create Axon initialize with exception: {e}")
 
     async def concurrent_forward(self):
@@ -147,9 +152,11 @@ class BaseValidatorNeuron(BaseNeuron):
                 try:
                     self.loop.run_until_complete(self.concurrent_forward())
                 except torch.cuda.OutOfMemoryError as e:
+                    sentry_sdk.capture_exception()
                     bt.logging.error(f"Out of memory error: {e}")
                     continue
                 except MaxRetryError as e:
+                    sentry_sdk.capture_exception()
                     bt.logging.error(f"MaxRetryError: {e}")
                     continue
 
@@ -164,12 +171,14 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
+            sentry_sdk.capture_exception()
             self.axon.stop()
             bt.logging.success("Validator killed by keyboard interrupt.")
             sys.exit()
 
         # In case of unforeseen errors, the validator will log the error and quit
         except Exception as err:
+            sentry_sdk.capture_exception()
             bt.logging.error("Error during validation", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
             self.should_exit = True

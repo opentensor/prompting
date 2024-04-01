@@ -15,6 +15,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import sentry_sdk
 import time
 import torch
 import argparse
@@ -23,6 +24,7 @@ import threading
 import bittensor as bt
 from prompting.base.neuron import BaseNeuron
 from prompting.utils.config import add_miner_args
+from prompting.utils.sentry import init_sentry
 from traceback import print_exception
 
 
@@ -37,7 +39,7 @@ class BaseMinerNeuron(BaseNeuron):
         add_miner_args(cls, parser)
 
     def __init__(self, config=None):
-        super().__init__(config=config)
+        super().__init__(config=config, neuron_type="miner")
 
         # Warn if allowing incoming requests from anyone.
         if not self.config.blacklist.force_validator_permit:
@@ -125,12 +127,14 @@ class BaseMinerNeuron(BaseNeuron):
 
         # If someone intentionally stops the miner, it'll safely terminate operations.
         except KeyboardInterrupt:
+            sentry_sdk.capture_exception()
             self.axon.stop()
             bt.logging.success("Miner killed by keyboard interrupt.")
             exit()
 
         # In case of unforeseen errors, the miner will log the error and continue operations.
         except Exception as err:
+            sentry_sdk.capture_exception()
             bt.logging.error("Error during mining", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
             self.should_exit = True
