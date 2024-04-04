@@ -38,8 +38,7 @@ bash install.sh
 
 # Compute Requirements
 
-1. To run a **validator**, you will need at least 24GB of VRAM. 
-2. To run the default huggingface **miner**, you will need at least 18GB of VRAM. 
+To run a **validator** or a **miner**, you will need at least 24GB of VRAM. For miners, there is the potential to run **miners** on smaller VRAM cards, but this must be done at your own risk. As always, we highly recommend you run on [testnet](#testnet)
 
 </div>
 
@@ -73,7 +72,7 @@ Example of running a SOLAR miner:
 pm2 start neurons/miners/huggingface/miner.py --interpreter python3 --name solar_miner -- --netuid 1  --subtensor.network finney --wallet.name my_wallet --wallet.hotkey m1 --neuron.model_id NousResearch/Nous-Hermes-2-SOLAR-10.7B --axon.port 21988 --logging.debug 
 ``` 
 
-# Testnet 
+# Testnet
 We highly recommend that you run your miners on testnet before deploying on main. This is give you an opportunity to debug your systems, and ensure that you will not lose valuable immunity time. The SN1 testnet is **netuid 61**. 
 
 In order to run on testnet, you will need to go through the same hotkey registration proceure as on main, but using **testtao**. You will need to ask for some in the community discord if you do not have any. 
