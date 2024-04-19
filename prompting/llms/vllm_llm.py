@@ -52,7 +52,9 @@ def load_vllm_pipeline(model_id: str, device: str, mock=False):
 
     try:
         # Attempt to initialize the LLM
-        return LLM(model=model_id, gpu_memory_utilization=gpu_mem_utilization)
+        _ = LLM(model=model_id, gpu_memory_utilization=gpu_mem_utilization)
+        _.llm_engine.tokenizer.eos_token_id = 128009
+        return _
     except ValueError as e:
         bt.logging.error(
             f"Error loading the VLLM pipeline within {max_allowed_memory_in_gb}GB: {e}"
@@ -91,6 +93,7 @@ class vLLMPipeline(BasePipeline):
     def __init__(self, model_id: str, device: str = None, mock=False):
         super().__init__()
         self.llm = load_vllm_pipeline(model_id, device, mock)
+        self.llm.eos_token_id = 128009
         self.mock = mock
 
     def __call__(self, composed_prompt: str, **model_kwargs: Dict) -> str:
@@ -105,7 +108,7 @@ class vLLMPipeline(BasePipeline):
         sampling_params = SamplingParams(
             temperature=temperature, top_p=top_p, max_tokens=max_tokens
         )
-        output = self.llm.generate(composed_prompt, sampling_params, use_tqdm=True)
+        output = self.llm.generate(composed_prompt, sampling_params, use_tqdm=True,)
         response = output[0].outputs[0].text
         return response
 
@@ -155,17 +158,17 @@ class vLLM_LLM(BaseLLM):
         for message in messages:
             if message["role"] == "system":
                 composed_prompt += (
-                    f'<|im_start|>system\n{message["content"]} <|im_end|>'
+                    f'<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n{{{{ {message["content"]} }}}}<|eot_id|>'
                 )
             elif message["role"] == "user":
-                composed_prompt += f'<|im_start|>user\n{message["content"]} <|im_end|>'
+                composed_prompt += f'<|start_header_id|>user<|end_header_id|>\n{{{{ {message["content"]} }}}}<|eot_id|>'
             elif message["role"] == "assistant":
                 composed_prompt += (
-                    f'<|im_start|>assistant\n{message["content"]} <|im_end|>'
+                    f'<|start_header_id|>assistant<|end_header_id|>\n{{{{ {message["content"]} }}}}<|eot_id|>'
                 )
 
         # Adds final tag indicating the assistant's turn
-        composed_prompt += "<|im_start|>assistant\n"
+        composed_prompt += "<|start_header_id|>assistant<|end_header_id|>"
         return composed_prompt
 
     def forward(self, messages: List[Dict[str, str]]):

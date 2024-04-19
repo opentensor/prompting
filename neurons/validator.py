@@ -38,6 +38,7 @@ class Validator(BaseValidatorNeuron):
             model_id=self.config.neuron.model_id,
             device=self.device,
             mock=self.config.mock,
+            
         )
 
         if abs(1-sum(self.config.neuron.task_p)) > 0.001:
