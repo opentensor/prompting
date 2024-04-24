@@ -101,9 +101,10 @@ class vLLMPipeline(BasePipeline):
         temperature = model_kwargs.get("temperature", 0.8)
         top_p = model_kwargs.get("top_p", 0.95)
         max_tokens = model_kwargs.get("max_tokens", 256)
+        min_tokens = model_kwargs.get("min_tokens", 0)
 
         sampling_params = SamplingParams(
-            temperature=temperature, top_p=top_p, max_tokens=max_tokens
+            temperature=temperature, top_p=top_p, max_tokens=max_tokens, min_tokens=min_tokens,
         )
         output = self.llm.generate(composed_prompt, sampling_params, use_tqdm=True)
         response = output[0].outputs[0].text
@@ -136,12 +137,13 @@ class vLLM_LLM(BaseLLM):
         role: str = "user",
         disregard_system_prompt: bool = False,
         cleaner: CleanerPipeline = None,
+        token_limit = None,
     ):
         # Adds the message to the list of messages for tracking purposes, even though it's not used downstream
         messages = self.messages + [{"content": message, "role": role}]
 
         t0 = time.time()
-        response = self.forward(messages=messages)
+        response = self.forward(messages=messages, token_limit=token_limit)
         response = self.clean_response(cleaner, response)
 
         self.messages = messages + [{"content": response, "role": "assistant"}]
@@ -168,10 +170,13 @@ class vLLM_LLM(BaseLLM):
         composed_prompt += "<|im_start|>assistant\n"
         return composed_prompt
 
-    def forward(self, messages: List[Dict[str, str]]):
+    def forward(self, messages: List[Dict[str, str]], token_limit = None):
         # make composed prompt from messages
         composed_prompt = self._make_prompt(messages)
-        response = self.llm_pipeline(composed_prompt, **self.model_kwargs)
+        model_kwargs = self.model_kwargs.copy()
+        if token_limit:
+            model_kwargs["max_tokens"] = token_limit
+        response = self.llm_pipeline(composed_prompt, **model_kwargs)
 
         bt.logging.info(
             f"{self.__class__.__name__} generated the following output:\n{response}"
