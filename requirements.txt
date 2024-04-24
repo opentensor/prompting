@@ -23,4 +23,5 @@ langchainhub==0.1.14
 python-dotenv
 wikipedia_sections
 vllm
+aiohttp
 loguru

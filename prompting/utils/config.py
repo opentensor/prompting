@@ -382,12 +382,19 @@ def add_validator_args(cls, parser):
         help="Only query a single hotkey per ip.",
         default=False,
     )
-    
+
     parser.add_argument(
         "--neuron.forward_max_time",
         type=int,
         help="Max time to wait for a forward call to complete in seconds.",
         default=120,
+    )
+
+    parser.add_argument(
+        "--neuron.batch_size",
+        type=int,
+        help="Number of concurrent queries to create in each forward.",
+        default=16,
     )
 
 
