@@ -5,3 +5,5 @@ pip uninstall mathgenerator -y
 
 # Installing package from the current directory
 pip install -e .
+
+pip uninstall uvloop -y
