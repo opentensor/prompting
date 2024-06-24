@@ -30,6 +30,7 @@ from prompting.protocol import StreamPromptingSynapse
 from prompting.rewards import RewardResult
 from prompting.tasks import QuestionAnsweringTask
 from prompting.utils.uids import get_random_uids
+from prompting.utils.exceptions import BittensorError
 from prompting.utils.logging import log_event
 from prompting.utils.misc import async_log, serialize_exception_to_string
 from transformers import PreTrainedTokenizerFast as Tokenizer
@@ -337,7 +338,12 @@ async def forward(self):
             roles.append("user")
             messages.append(agent.challenge)
             turn += 1
-
+        except BittensorError as e:
+            bittensor_error = serialize_exception_to_string(e)
+            bt.logging.error(
+                f"An error was raised from the Bittensor package. Ending validator. \n {bittensor_error}"
+            )
+            sys.exit(1)
         except BaseException as e:
             unexpected_errors = serialize_exception_to_string(e)
             bt.logging.error(
