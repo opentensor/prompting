@@ -592,7 +592,7 @@ class HFCodingDataset(Dataset):
             f"Search is not implemented for {self.__class__.__name__}"
         )
 
-    def random(self, min_lines=5, max_lines=100, selector: Selector = None, **kwargs):
+    def random(self, min_lines=5, max_lines=100, selector: Selector = random.choice, **kwargs):
         return self.get(min_lines, max_lines, selector)
 
     def extract_keywords(self, code, language, field):
